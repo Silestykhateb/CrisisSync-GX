@@ -1,0 +1,139 @@
+@startuml
+title CrisisSync - System Use Case Diagram
+left to right direction
+
+' =====================================================================
+'  PRIMARY (HUMAN) ACTORS - placed outside the system boundary, LEFT
+' =====================================================================
+actor "System User" as user
+actor "System Administrator" as admin
+actor "Logistics & Resources Officer" as logistics
+actor "Dispatcher" as dispatcher
+actor "Field Commander" as commander
+actor "Field Crew Member" as crew
+
+' Every concrete user type is a System User (all of them must log in)
+user <|-- admin
+user <|-- logistics
+user <|-- dispatcher
+user <|-- commander
+user <|-- crew
+
+' =====================================================================
+'  SECONDARY (NON-HUMAN) ACTORS - external system & timer, RIGHT
+' =====================================================================
+actor "National Clearing & Billing System" as clearing <<System>>
+actor "Month-End Scheduler" as scheduler <<Timer>>
+
+' =====================================================================
+'  SYSTEM BOUNDARY
+' =====================================================================
+rectangle "CrisisSync Emergency Management System" {
+
+  ' --- Common ---
+  usecase "Log In" as UC_Login
+
+  ' --- System Administrator ---
+  usecase "Manage User Accounts" as UC_ManageUsers
+  usecase "Load Initial Data" as UC_LoadData
+  usecase "Browse Incident History" as UC_History
+  usecase "View Management Reports" as UC_ViewReports
+  usecase "Generate Resource Utilization Report" as UC_UtilReport
+  usecase "Generate SLA Compliance Report" as UC_SLAReport
+
+  ' --- Logistics & Resources Officer ---
+  usecase "Update Equipment Status" as UC_EquipStatus
+  usecase "Transfer Equipment Between Stations" as UC_Transfer
+  usecase "Update Crew Availability" as UC_CrewAvail
+
+  ' --- Dispatcher: incident & task tree ---
+  usecase "Open Incident" as UC_OpenIncident
+  usecase "Define Task" as UC_DefineTask
+  usecase "Modify Task Prerequisites" as UC_EditPrereqs
+  usecase "Reject Cyclic Dependency" as UC_RejectCycle
+
+  ' --- Dispatcher: resource reservation ---
+  usecase "Reserve Resource Package" as UC_Reserve
+  usecase "Roll Back Conflicting Reservation" as UC_Rollback
+  usecase "Auto-Allocate Resource Package" as UC_AutoAllocate
+  usecase "Retry with Next-Best Alternative" as UC_Retry
+  usecase "Assign Replacement Equipment" as UC_Replace
+
+  ' --- Monitoring (shared) ---
+  usecase "Monitor Live Incident Status" as UC_Monitor
+
+  ' --- Dispatcher: cancellation & closure ---
+  usecase "Cancel Task" as UC_CancelTask
+  usecase "Cascade-Cancel Dependent Tasks" as UC_Cascade
+  usecase "Cancel Incident" as UC_CancelIncident
+  usecase "Close Incident" as UC_CloseIncident
+  usecase "Settle Incident Billing" as UC_Billing
+  usecase "Handle Billing Rejection" as UC_BillingRejected
+
+  ' --- Field Commander ---
+  usecase "Report Task Completion" as UC_Complete
+
+  ' --- Field Crew Member / Field Commander ---
+  usecase "Report Equipment Failure" as UC_ReportFailure
+  usecase "Report Shift Readiness" as UC_Readiness
+  usecase "View Assigned Task" as UC_ViewTask
+}
+
+' =====================================================================
+'  ACTOR - USE CASE ASSOCIATIONS (solid lines, no arrows)
+' =====================================================================
+user -- UC_Login
+
+admin -- UC_ManageUsers
+admin -- UC_LoadData
+admin -- UC_History
+admin -- UC_ViewReports
+admin -- UC_UtilReport
+admin -- UC_SLAReport
+
+logistics -- UC_EquipStatus
+logistics -- UC_Transfer
+logistics -- UC_CrewAvail
+
+dispatcher -- UC_OpenIncident
+dispatcher -- UC_DefineTask
+dispatcher -- UC_EditPrereqs
+dispatcher -- UC_Reserve
+dispatcher -- UC_AutoAllocate
+dispatcher -- UC_Replace
+dispatcher -- UC_Monitor
+dispatcher -- UC_CancelTask
+dispatcher -- UC_CancelIncident
+dispatcher -- UC_CloseIncident
+
+commander -- UC_Monitor
+commander -- UC_Complete
+commander -- UC_ReportFailure
+
+crew -- UC_ReportFailure
+crew -- UC_Readiness
+crew -- UC_ViewTask
+
+' =====================================================================
+'  EXTERNAL ACTOR ASSOCIATIONS (solid lines, no arrows)
+' =====================================================================
+UC_Billing -- clearing
+UC_UtilReport -- scheduler
+UC_SLAReport -- scheduler
+
+' =====================================================================
+'  DEPENDENCIES
+'  <<include>> : Base ..> Included
+'  <<extend>>  : Extension ..> Base
+' =====================================================================
+UC_AutoAllocate ..> UC_Reserve : <<include>>
+UC_CloseIncident ..> UC_Billing : <<include>>
+
+UC_RejectCycle ..> UC_DefineTask : <<extend>>
+UC_RejectCycle ..> UC_EditPrereqs : <<extend>>
+UC_Rollback ..> UC_Reserve : <<extend>>
+UC_Retry ..> UC_AutoAllocate : <<extend>>
+UC_Cascade ..> UC_CancelTask : <<extend>>
+UC_BillingRejected ..> UC_CloseIncident : <<extend>>
+
+@enduml
