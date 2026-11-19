@@ -1,6 +1,6 @@
 # CrisisSync – Requirements Specification, Traceability Matrix & Acceptance Tests
 
-**Group:** G18\
+**Group:** G15\
 **Course:** Software Engineering Methods\
 **System:** CrisisSync – Emergency Incident Management System\
 **Assignment:** Assignment 1 – Part B (Requirements Engineering)\
@@ -28,7 +28,7 @@ Assignment 1, Part B:
 | **OP-2** | Generating the SLA compliance report – automatically at the end of a month or on demand | Generate SLA Compliance Report, View Management Reports |
 
 **Use case names.** Every use case named in this document is written exactly as it appears in the Visual
-Paradigm model `G18_Assignment1.vpp`.
+Paradigm model `G15_Assignment1.vpp`.
 
 **Requirement syntax.** Every requirement is a single statement with the keyword **shall**, written in one
 of three EARS templates:
@@ -67,7 +67,7 @@ of three EARS templates:
 | **FR-09** | Unwanted behaviour | If the reservation transaction of an automatic allocation is rolled back because a selected resource was reserved concurrently, then the server shall retry the reservation with the next-best *Available* alternative for the conflicting slot, up to 2 alternative attempts, without further Dispatcher input. | Automatic allocation – automatic continuation to the next-best available alternative (up to 2 alternative attempts) |
 | **FR-10** | Event-driven | When the Field Commander reserved to an *Active* task reports the task's completion, the server shall change the state of the task to *Completed*. | Task life cycle – *Completed*: the Field Commander reports completion |
 | **FR-11** | Unwanted behaviour | If a user who is not the Field Commander reserved to the task reports the task's completion, then the server shall reject the report. | Dual status of the Field Commander – may close only the tasks he/she commands |
-| **FR-12** | Event-driven | When a task enters the *Completed* state, the server shall set the status of every resource reserved to that task to *Available*. | Task life cycle – *Completed*: the resources are released immediately |
+| **FR-12** | Event-driven | When a task enters the Completed state, the server shall release every resource still in the Reserved to task status by setting it to Available, while preserving the Faulty / Under repair or Unavailable status of any resource already marked as such. | Task life cycle – *Completed*: the resources are released immediately |
 | **FR-13** | Event-driven | When a task enters the *Completed* state, the server shall change every *Blocked* task whose prerequisite tasks are all *Completed* to the *Ready* state. | Task life cycle – *Completed*: the server advances the dependent tasks |
 | **FR-14** | Ubiquitous | The server shall record every task state transition and every resource status change caused by a reservation or by a completion report in the audit log, together with the acting user and the server timestamp. | Incident history (audit log) |
 
@@ -182,22 +182,22 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **And:** T2 remains in state *Ready*.
 
 #### Acceptance Test [TEST-03]: Failure message names the unavailable resources (Exception)
-* **Given:** After the reservation screen at ST-A listed them as *Available*, D-07 was reserved to the task "Access road clearing" and PM-2 was set to *Unavailable* (sickness); the Dispatcher at ST-A then confirmed the package of T2, and the reservation transaction is rolled back.
-* **When:** The rollback completes.
-* **Then:** The Dispatcher receives the message "Reservation failed – the following resources are no longer available: Bulldozer D-07 (reserved to task 'Access road clearing'), Paramedic PM-2 (unavailable)".
-* **And:** The message names neither FC-3 nor EO-7.
+- **Given:** The reservation screen at ST-A lists FC-3, EO-7, D-07 and PM-2 as *Available*. Before confirmation, D-07 becomes *Reserved to task* "Access road clearing" and PM-2 becomes *Unavailable* (sickness), while FC-3 and EO-7 remain *Available*.
+- **When:** The Dispatcher at ST-A confirms the reservation package for T2 containing all four resources.
+- **Then:** The server rolls back the reservation transaction and displays the message "Reservation failed – the following resources are no longer available: Bulldozer D-07 (reserved to task 'Access road clearing'), Paramedic PM-2 (unavailable)".
+- **And:** The message names neither FC-3 nor EO-7.
 
 #### Acceptance Test [TEST-04]: Screen refreshed with the current availability (Exception and Recovery)
-* **Given:** The reservation of T2 submitted from ST-A is rolled back because D-07 was reserved concurrently from ST-B.
-* **When:** The rollback completes.
-* **Then:** The status screen at ST-A shows D-07 as *Reserved to task* and FC-3, EO-7 and PM-2 as *Available*.
-* **And:** The screen still shows T2 as *Ready*, so the Dispatcher can choose another bulldozer and reserve again.
+- **Given:** T2 is *Ready*, and the reservation screen at ST-A initially shows D-07, FC-3, EO-7 and PM-2 as *Available*. Meanwhile, D-07 becomes *Reserved to task* by a concurrent reservation from ST-B.
+- **When:** The Dispatcher at ST-A confirms the reservation package for T2 containing D-07.
+- **Then:** The server rolls back the transaction and refreshes the status screen at ST-A, showing D-07 as *Reserved to task* and FC-3, EO-7 and PM-2 as *Available*.
+- **And:** The screen still shows T2 as *Ready*, allowing the Dispatcher to select another available bulldozer and retry the reservation.
 
 #### Acceptance Test [TEST-05]: Task becomes Active when the reservation succeeds (Happy Path)
-* **Given:** T2 is *Ready* and the Dispatcher has confirmed a package of four *Available* resources.
-* **When:** The reservation transaction commits.
-* **Then:** T2 is in state *Active*.
-* **And:** The Dispatcher's status screen shows T2 as *Active*.
+- **Given:** T2 is *Ready*, and four resources required by its package are *Available*.
+- **When:** The Dispatcher selects T2, chooses *Reserve resources*, selects the four resources and confirms the reservation.
+- **Then:** The reservation transaction commits successfully, and T2 changes from *Ready* to *Active*.
+- **And:** The Dispatcher's status screen shows T2 as *Active*.
 
 #### Acceptance Test [TEST-06]: Reservation request for a task that is not Ready (Exception)
 * **Given:** T2 is *Blocked* because its prerequisite T1 is still *Active*; FC-3, EO-7, D-07 and PM-2 are *Available*.
@@ -206,10 +206,10 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **And:** FC-3, EO-7, D-07 and PM-2 are still *Available* and T2 is still *Blocked*.
 
 #### Acceptance Test [TEST-07]: Two Dispatchers reserve the same bulldozer (Race Condition)
-* **Given:** D-07 is *Available*; within the same 100 ms the Dispatcher at ST-A confirms a package that contains D-07 for the incident "Carmel Fire" and the Dispatcher at ST-B confirms a package that contains D-07 for the incident "Tel Aviv Collapse".
-* **When:** The server executes both reservation transactions.
-* **Then:** Exactly one of the two transactions commits.
-* **And:** D-07 is reserved to exactly one task.
+- **Given:** D-07 is *Available*; T2 of "Carmel Fire" and a task of "Tel Aviv Collapse" are both *Ready*. Both tasks require D-07, while all other resources required by their packages are different and *Available*.
+- **When:** The Dispatchers at ST-A and ST-B submit their respective reservation requests containing D-07 concurrently, within the same 100 ms.
+- **Then:** Exactly one of the two reservation transactions commits, while the other is rolled back.
+- **And:** D-07 is reserved to exactly one task, and no resource from the failed transaction's package is reserved by that transaction.
 
 #### Acceptance Test [TEST-08]: Automatic allocation by nearest resources (Happy Path)
 * **Given:** T2 is *Ready*; two *Available* bulldozers exist – D-07 at 4 km and D-12 at 15 km from the incident location – and every other slot of the package has at least one *Available* candidate.
@@ -218,10 +218,10 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **And:** D-12 is not selected and remains *Available*.
 
 #### Acceptance Test [TEST-09]: Automatic allocation retries with the next-best alternative (Recovery)
-* **Given:** Automatic allocations for "Carmel Fire" and for "Tel Aviv Collapse" both rank the bulldozer D-07 first and D-12 second; D-12 is *Available*.
-* **When:** Both allocations run at the same time and the reservation for "Tel Aviv Collapse" is rolled back because D-07 was reserved for "Carmel Fire".
-* **Then:** The server re-executes the reservation for "Tel Aviv Collapse" with D-12 in the Bulldozer slot, without any further Dispatcher input.
-* **And:** The reservation commits at the first alternative attempt, within the limit of 2 alternative attempts.
+- **Given:** Two *Ready* tasks, one in "Carmel Fire" and one in "Tel Aviv Collapse", require automatic resource allocation. Both allocations rank bulldozer D-07 first and D-12 second. Both bulldozers are initially *Available*, and all other required resources are different and *Available*.
+- **When:** The Dispatchers initiate both automatic allocations concurrently, and "Carmel Fire" successfully reserves D-07 before "Tel Aviv Collapse".
+- **Then:** The server rolls back the conflicting reservation for "Tel Aviv Collapse" and automatically retries with D-12 in the Bulldozer slot, without further Dispatcher input.
+- **And:** The reservation for "Tel Aviv Collapse" commits successfully on the first alternative attempt, within the limit of 2 alternative attempts, and no resources remain reserved from the failed transaction.
 
 #### Acceptance Test [TEST-10]: Field Commander reports completion (Happy Path)
 * **Given:** T2 is *Active*, FC-3 is the Field Commander reserved to it, and FC-3 is logged in.
@@ -235,7 +235,7 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **And:** T2 remains *Active* and its resources remain reserved.
 
 #### Acceptance Test [TEST-12]: Resources released on completion (Happy Path)
-* **Given:** T2 is *Active* with FC-3, EO-7, D-07 and PM-2 reserved to it.
+- **Given:** T2 is *Active* with FC-3, EO-7, D-07 and PM-2 reserved to it, and none of these resources has been reported as *Faulty / Under repair* or *Unavailable*.
 * **When:** FC-3 reports the completion of T2.
 * **Then:** FC-3, EO-7, D-07 and PM-2 all have the status *Available*.
 * **And:** All four appear as *Available* when a Dispatcher opens the reservation of another *Ready* task.
@@ -247,10 +247,10 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **And:** T3 remains *Blocked* because T4 is not *Completed*.
 
 #### Acceptance Test [TEST-14]: Audit log records the transitions (Happy Path)
-* **Given:** The Dispatcher "dana" is logged in at ST-A; T2 is *Ready* and FC-3, EO-7, D-07 and PM-2 are *Available*.
-* **When:** "dana" reserves the package of T2 and the transaction commits.
-* **Then:** The audit log contains one entry for the transition *Ready → Active* of T2 and one entry for the status change of each of the four resources.
-* **And:** Each of the five entries carries the user "dana" and the server timestamp of the change.
+- **Given:** The Dispatcher "dana" is logged in at ST-A; T2 is *Ready*, and FC-3, EO-7, D-07 and PM-2 are *Available*.
+- **When:** "dana" selects T2, chooses *Reserve resources*, selects the four resources and confirms the reservation.
+- **Then:** The reservation transaction commits successfully, and the audit log contains one entry for the transition *Ready* → *Active* of T2 and one entry for the status change of each of the four resources.
+- **And:** Each of the five entries carries the user "dana" and the server timestamp of the change.
 
 ### 5.2 OP-2 – SLA compliance report
 
@@ -272,10 +272,11 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **And:** The report shows an average of 0 h 30 min for the type *Road Accident*.
 
 #### Acceptance Test [TEST-18]: Only non-cancelled incidents completed in the month are counted (Happy Path)
-* **Given:** Three *Fire* incidents exist: the last task of incident A was completed on 30 October 2026 and A was closed on the same day; incident B was opened on 29 October 2026 and its last task was completed on 2 November 2026; incident C was cancelled on 15 October 2026.
-* **When:** The SLA Compliance Report for October 2026 is generated.
-* **Then:** The *Fire* average of October 2026 is computed from incident A only.
-* **And:** Incidents B and C do not contribute to the report of October 2026 (B belongs to the report of November 2026).
+
+- **Given:** Four *Fire* incidents exist: the last task of incident A was completed on 30 October 2026 and A was closed on the same day; incident B was opened on 29 October 2026 and its last task was completed on 2 November 2026; incident C was cancelled on 15 October 2026; incident D's last task was completed on 31 October 2026, but D remains open pending billing.
+- **When:** The SLA Compliance Report for October 2026 is generated.
+- **Then:** The *Fire* average of October 2026 is computed from incidents A and D only.
+- **And:** Incidents B and C do not contribute to the report of October 2026 (B belongs to the report of November 2026).
 
 #### Acceptance Test [TEST-19]: Incident type without completed incidents (Exception)
 * **Given:** No *Hazmat Leak* incident was completed in October 2026, and two *Fire* incidents were completed in October 2026.
@@ -301,24 +302,25 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **Then:** The server rejects the request.
 * **And:** The request generates and stores no report.
 
-#### Acceptance Test [TEST-23]: Failed generation leaves no partial report (Exception)
-* **Given:** No SLA Compliance Report is stored for August 2026, and a fault injector makes the database unavailable while the server computes the report for August 2026.
-* **When:** The generation fails.
-* **Then:** No SLA Compliance Report is stored for August 2026.
-* **And:** The reports that were stored before the failure are unchanged.
+#### Acceptance Test [TEST-23]: Report generation failure leaves no partial report (Exception)
+- **Given:** No SLA Compliance Report exists for August 2026, and a database failure is configured to occur during report generation.
+- **When:** The System Administrator requests the SLA Compliance Report for August 2026.
+- **Then:** The report generation fails, and the server rolls back all partial changes without saving an incomplete report for August 2026.
+- **And:** All previously saved reports remain unchanged.
 
-#### Acceptance Test [TEST-24]: Administrator notified of a failed on-demand generation (Exception)
-* **Given:** The System Administrator requests the SLA Compliance Report for August 2026, and the database becomes unavailable during the computation.
-* **When:** The on-demand generation fails.
-* **Then:** The Administrator's station displays the message "Report generation failed – please retry".
-* **And:** The action *Generate SLA Compliance Report* stays available, so the Administrator can repeat the request.
+#### Acceptance Test [TEST-24]: Report failure notification (Exception)
+- **Given:** The System Administrator is logged in, and the database becomes unavailable during report generation.
+- **When:** The System Administrator requests the SLA Compliance Report for August 2026.
+- **Then:** The report generation fails, and the system displays the message "Report generation failed – please retry".
+- **And:** The report generation option remains available so the System Administrator can retry the request.
 
 ### 5.3 Non-functional acceptance tests
 
 #### Acceptance Test [TEST-25]: Reservation time under load (Performance)
-* **Given:** 50 Dispatcher stations are connected and a load generator submits 1,000 valid package reservation requests.
-* **When:** The duration of every reservation transaction, from receipt of the request to commit, is measured on the server.
-* **Then:** At least 95 % of the measured durations are at most 2.0 seconds.
+- **Given:** 50 Dispatcher stations are connected and actively generating load. A test environment contains 1,000 different *Ready* tasks with sufficient distinct *Available* resources to complete all package reservations without resource conflicts.
+- **When:** A load generator submits 1,000 valid package reservation requests through the 50 Dispatcher stations, while the server measures each transaction's duration from receipt of the request to commit.
+- **Then:** At least 95% of the 1,000 reservation transactions (at least 950 transactions) commit within 2.0 seconds.
+- **And:** All 1,000 reservations complete successfully, and the measured durations are recorded for verification.
 
 #### Acceptance Test [TEST-26]: SLA report generation time (Performance)
 * **Given:** The database contains 10,000 incidents whose last task was completed in March 2026.
@@ -332,9 +334,10 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **And:** No task, resource or report record is changed.
 
 #### Acceptance Test [TEST-28]: No double reservation under concurrency (Reliability)
-* **Given:** A test harness runs 1,000 pairs of concurrent reservation transactions; the two transactions of each pair request the same *Available* resource.
-* **When:** All 2,000 transactions have ended.
-* **Then:** In each of the 1,000 pairs the resource is reserved to exactly one of the two tasks – 0 double reservations.
+- **Given:** A test harness prepares 1,000 independent test cases. In each case, two different *Ready* tasks require the same *Available* resource, while all other resources in their packages are different and *Available*. Each case starts with the shared resource in the *Available* state.
+- **When:** The test harness submits two concurrent reservation requests for each case and waits for both transactions to finish.
+- **Then:** In each of the 1,000 cases, at most one transaction commits a reservation of the shared resource, resulting in 0 double reservations.
+- **And:** If one transaction commits, the other transaction does not reserve any resources from its package.
 
 #### Acceptance Test [TEST-29]: Lock wait time-out (Reliability – Time-out and Recovery)
 * **Given:** A test transaction holds the lock on the record of D-07 for 20 seconds without committing.
@@ -355,12 +358,12 @@ System recovery after a failure is checked in TEST-04, TEST-09 and TEST-29 for O
 * **And:** Exactly one SLA Compliance Report is stored for October 2026.
 
 #### Acceptance Test [TEST-32]: Reservation in a bounded number of actions (Usability)
-* **Given:** The Dispatcher views the live status screen of "Carmel Fire"; T2 is *Ready* and its package has 4 slots.
-* **When:** A usability tester counts every user action that the Dispatcher needs to reserve the package of T2.
-* **Then:** The count is at most 7 (N + 3 with N = 4): select T2, choose *Reserve resources*, one selection for each of the 4 slots, and confirm.
-* **And:** The Dispatcher opens no other screen during the reservation.
+- **Given:** The Dispatcher views the live status screen of "Carmel Fire"; T2 is *Ready*, its package has 4 slots, and all required resources are *Available*.
+- **When:** The Dispatcher selects T2, chooses *Reserve resources*, selects one resource for each of the 4 slots, and confirms the reservation, while a usability tester counts every user action.
+- **Then:** The reservation is completed in at most 7 user actions (N + 3 with N = 4): select T2, choose *Reserve resources*, make 4 resource selections, and confirm.
+- **And:** The Dispatcher does not need to open any additional screen during the reservation.
 
 #### Acceptance Test [TEST-33]: Prompt failure message (Usability – Exception)
-* **Given:** The Dispatcher at ST-A confirms a package that contains a resource reserved meanwhile from ST-B, and the server logs the time of the rollback.
-* **When:** The server rolls back the transaction of ST-A.
-* **Then:** The failure message appears on the screen of ST-A within 1.0 second of the logged rollback time.
+- **Given:** The Dispatcher at ST-A has selected a package containing a resource that was reserved concurrently from ST-B. The server is configured to log the rollback timestamp.
+- **When:** The Dispatcher at ST-A confirms the reservation package.
+- **Then:** The server rolls back the reservation transaction, and the failure message appears on ST-A's screen within 1.0 second of the logged rollback timestamp.
